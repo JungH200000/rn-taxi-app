@@ -1,129 +1,130 @@
 # PRD: 택시 호출 앱 (Taxi App)
 
-본 문서는 현재 구현된 v0(프로토타입) 기준의 제품 요구사항 문서입니다. 이후 스프린트마다 문서를 계속 업데이트합니다.
+본 문서는 현재 구현 중인 v0(MVP) 범위를 정의합니다. 스프린트마다 지속적으로 업데이트됩니다.
 
 ## 1. 개요 (Overview)
-- 목적: 승객이 출발지/도착지를 설정해 택시를 호출하는 앱의 MVP를 React Native로 구현한다.
-- 현재 범위: 로그인/회원가입 UI, 자동 로그인, 지도 화면 UI(마커 추가 토글), 호출 목록 더미 데이터, 설정(닉네임 관리, 로그아웃).
-- 비범위(Out of scope, v0): 실제 지도 SDK 연동, 위치 권한 처리, 서버 인증/배차/푸시, 운전기사(드라이버) 앱, 결제.
 
-## 2. 사용자와 가치 (Users & Value)
-- 대상 사용자: 택시를 호출하려는 일반 승객.
-- 사용자 가치: 간단한 온보딩과 호출 플로우를 빠르게 체험할 수 있는 프로토타입 제공(실제 배차는 미포함).
+- 목적: 사용자가 출발지/도착지를 지정해 택시 호출을 요청하고, 기사에게는 배차 알림이 전달되는 모바일 MVP를 React Native + Node.js로 구현한다.
+- 현재 범위: 로그인/회원가입 UI, 메인 지도/목록/설정 화면, 호출 목록 표시, 기초 배차 요청, 푸시 알림 연계.
+- 제외 범위(v0): 실 이동 경로 추적, 권한 처리 고도화, 기사 앱 별도 분리, 결제/요금 산정, 정식 배차 로직.
 
-## 3. 목표 및 지표 (Goals & Metrics)
+## 2. 타깃 사용자 & 가치 (Users & Value)
+
+- 승객: 간단한 정보 입력만으로 택시 호출 요청을 빠르게 경험할 수 있다.
+- 기사: 호출 목록을 공유로 받아보고 배차 수락 시 사용자에게 즉시 알릴 수 있다.
+
+## 3. 목표 & 지표 (Goals & Metrics)
+
 - 목표
-  - v0 UI 플로우 완성: 인트로→로그인/회원가입→메인(지도/목록/설정).
-  - 기기 재실행 시 자동 로그인 상태 유지(로컬 저장).
-  - 호출 목록/로딩/당겨서새로고침 UX 제공(더미 데이터).
+  - v0 UI 플로우 완성: Intro → 로그인/회원가입 → 메인(지도, 목록, 설정 탭)
+  - 기본 서버 API(`/taxi/*`, `/driver/*`)로 회원 관리·콜 생성·목록 조회·배차 수락 처리
+  - Firebase Cloud Messaging을 이용해 호출/배차 알림 전송 경로 확보
 - 지표(정성)
-  - 온보딩 무리 없이 전환 가능 여부, 버튼/탭의 명확성, 저장/로그아웃 동작 확인.
+  - 로그인/목록/배차 요청이 로컬 테스트 환경에서 성공적으로 수행될 것
+  - 에러 상황(Alert, 코드) 대응 흐름 확인
 
 ## 4. 핵심 기능 (Scope v0)
-1) 온보딩/인증
-- 인트로 스플래시: 2초 후 자동 로그인 여부 확인(`AsyncStorage.userId`) 후 분기.
-- 로그인: ID/PW 입력 시 버튼 활성화, 로그인 시 `userId`를 로컬 저장.
-- 회원가입: ID/비밀번호/확인 입력 유효성 검증만 제공(서버 전송 없음).
 
-2) 메인 탭
-- 지도 탭
-  - UI: 상단 출발지/도착지 입력, 호출 버튼.
-  - 제스처: 지도 영역 길게 누르면 “출발지로 등록/도착지로 등록” 토글 패널 노출(상태 토글만, 실제 마커/좌표 저장 없음).
-- 목록 탭
-  - 더미 호출 10건 생성, 리스트 헤더/아이템, 당겨서 새로고침, 로딩 모달.
-- 설정 탭
-  - 닉네임 관리: `AsyncStorage.nickName` 로드/저장, 저장 성공/실패 안내(Alert).
-  - 로그아웃: `AsyncStorage.userId` 제거 후 스택 초기화.
+1. 사용자 인증
 
-3) 데이터 보관
-- 로컬 저장: `AsyncStorage`에 `userId`, `nickName` 사용.
-- 서버 연동: 없음(향후 연동 예정). `docs/daily-dev-logs/log01.md`에 DB 스키마 제안 참고.
+   - Intro에서 `AsyncStorage.userId` 존재 여부로 메인/로그인 분기
+   - 로그인: ID/PW 입력 → 서버 `/taxi/login` 검증 → 성공 시 `AsyncStorage` 저장
+   - 회원가입: ID/PW 검증 → `/taxi/register` 호출 → 중복 ID Alert 처리
 
-## 5. 사용자 흐름 (User Flows)
-1) 앱 실행: Intro(2초) → 자동 로그인(있음: Main / 없음: Login).
-2) 로그인: ID/PW 입력 → Login 버튼 활성화 → 저장 후 Main 이동.
-3) 회원가입: ID/PW/비밀번호 확인 입력 → 일치 시 버튼 활성화 → v0에서는 로컬/서버 저장 없음.
-4) 지도 호출: 출발/도착지 입력 또는 길게 누르기 → 패널에서 출발/도착 선택 → v0에서는 호출 생성/전송 미구현.
-5) 목록 확인: 더미 데이터 표시, 당겨서 새로고침 시 재로딩.
-6) 설정 변경: 닉네임 입력→저장(로컬)→토스트/Alert 확인, 로그아웃 시 초기 화면 복귀.
+2. 호출 생성 & 조회
+
+   - 지도 화면: Google Maps 표시, 롱프레스 UI로 출발/도착지 선택(후속 구현 예정)
+   - 호출 버튼: v0에서는 UI만 제공, 서버 연동은 후속 단계에서 확장
+   - 목록 화면: `/taxi/list` 호출 결과를 FlatList로 표시, 풀투리프레시 및 로딩 모달 제공
+
+3. 기사 플로우(서버)
+
+   - `/driver/login`으로 기사 계정 검증, `/driver/list`로 전체 호출/배차 상태 조회
+   - `/driver/accept` 실행 시 `tb_call` 갱신 및 사용자에게 배차 완료 푸시 발송
+
+4. 푸시 알림
+   - Firebase Admin SDK 초기화 후 서비스 계정 키 사용
+   - 신규 호출 시 기사 전체에게 알림, 배차 수락 시 해당 사용자에게 알림
+
+## 5. 사용자 플로우 (User Flows)
+
+1. 앱 시작 → Intro: 저장된 `userId` 존재 시 Main, 없으면 Login
+2. 로그인 성공 → Main 탭 진입 → 지도/목록/설정 탭 이동
+3. 회원가입 성공 → Login 화면으로 복귀
+4. 목록 탭 진입 시 자동으로 `/taxi/list` 요청, 풀투리프레시로 재조회
+5. 기사 앱(v0에서는 동일 서버 API 사용) 호출 수락 → 사용자에게 FCM 알림
 
 ## 6. 네비게이션 구조 (Navigation)
-- Stack: Intro → Login → Register → Main, 또는 Intro → Main.
-- Tab(Main 내부): 지도(Main_Map), 목록(Main_List), 설정(Main_Setting).
-- 화면 레퍼런스
+
+- Stack: Intro → Login → Register → Main (Intro에서 조건부로 Main 바로 이동)
+- BottomTab(Main): Map(Main_Map), List(Main_List), Setting(Main_Setting)
+- 주요 화면 파일
   - `taxiApp/src/TaxiApp.tsx`: Stack 네비게이션 정의
-  - `taxiApp/src/Main.tsx`: BottomTab 네비게이션 정의
-  - `taxiApp/src/Intro.tsx`: 자동 로그인 체크
-  - `taxiApp/src/Login.tsx`: 로그인 저장 후 이동
-  - `taxiApp/src/Register.tsx`: 유효성 검사 UI
-  - `taxiApp/src/Main_Map.tsx`: 지도 UI/롱프레스 토글
-  - `taxiApp/src/Main_List.tsx`: 더미 목록/로딩/새로고침
-  - `taxiApp/src/Main_Setting.tsx`: 닉네임/로그아웃 진입
-  - `taxiApp/src/Main_Setting_NickName.tsx`: 닉네임 로컬 저장
+  - `taxiApp/src/Main.tsx`: BottomTab 정의
+  - `taxiApp/src/Main_Map.tsx`: 지도 UI, 롱프레스 대응 준비
+  - `taxiApp/src/Main_List.tsx`: 호출 목록, 새로고침/로딩 UI
+  - `taxiApp/src/Login.tsx`, `Register.tsx`: 인증 화면 + 서버 연동
 
 ## 7. 데이터 모델
+
 - 로컬(AsyncStorage)
-  - `userId: string` — 로그인 상태 판단에 사용
-  - `nickName: string` — 설정의 닉네임
-- 서버/DB (설계 반영)
-  - DB 사용자: `CREATE USER 'taxi'@'%' IDENTIFIED BY 'taxi';`
-  - 권한: `GRANT ALL PRIVILEGES ON taxi.* TO 'taxi'@'%' IDENTIFIED BY 'taxi';`
-  - 테이블
-    - `tb_user(user_id, user_pw, fcm_token)` — 승객 계정/FCM 토큰
-    - `tb_driver(driver_id, driver_pw, fcm_token)` — 기사 계정/FCM 토큰
-    - `tb_call(id, user_id, start_lat, start_lng, start_addr, end_lat, end_lng, end_addr, call_state, driver_id)` — 호출 정보 및 배차 상태
-  - 참고: 상세 SQL은 `docs/daily-dev-logs/log01.md`에 기록
+  - `userId: string` ? 로그인 세션 유지
+  - `nickName: string` ? 설정 화면에서 사용(추후 서버 연동 예정)
+- 서버(DB: MariaDB, `taxi` 스키마)
+  - `tb_user(user_id, user_pw, fcm_token)` ? 승객 계정/토큰
+  - `tb_driver(driver_id, driver_pw, fcm_token)` ? 기사 계정/토큰
+  - `tb_call(id, user_id, start_lat, start_lng, start_addr, end_lat, end_lng, end_addr, call_state, driver_id)` ? 콜 정보 및 상태
+- 환경 변수
+  - `.env`: `DB_PASSWORD` (MySQL 계정 비밀번호)
+  - Firebase 서비스 계정 JSON은 로컬/배포 인프라에서만 보관
 
 ## 8. 기술 스택 (Tech Stack)
-- React Native
-  - Navigation: `@react-navigation/native`, `@react-navigation/stack`, `@react-navigation/bottom-tabs`, `react-native-screens`, `react-native-safe-area-context`
-  - Gesture/Animation: `react-native-gesture-handler`, `react-native-reanimated`, `react-native-worklets`
-  - UI/Assets: `react-native-vector-icons`, `@types/react-native-vector-icons`, `react-native-responsive-screen`
-  - Storage: `@react-native-async-storage/async-storage`
-- 백엔드(계획): `Node.js`
-- 데이터베이스: `MariaDB` (관리 도구: `HeidiSQL`)
-- 환경: Android Studio, iOS Simulator
 
-### Android 설정 메모: react-native-vector-icons
-1) `taxiApp/android/app/build.gradle` 최하단에 아래 추가
-```groovy
-apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-```
-2) 변경사항 반영(Clean)
-```powershell
-cd taxiApp/android
-./gradlew clean
-```
+- 모바일: React Native, React Navigation, AsyncStorage, react-native-maps, react-native-vector-icons, react-native-responsive-screen
+- 네트워크: Axios(`taxiApp/src/API.tsx`)
+- 서버: Node.js, Express(Express Generator 기반), mysql 드라이버, dotenv
+- 인프라: Firebase Admin SDK(FCM), MariaDB(관리 도구: HeidiSQL)
+- Android:
+  - Google Maps Secrets Gradle Plugin(2.0.1) + `local.defaults.properties`로 API Key 관리
+  - `react-native-vector-icons` 빌드 스크립트 적용
 
-## 9. 요구사항 상세 (Requirements)
+## 9. 요구사항 세부 (Requirements)
+
 - 기능 요구사항
-  - 자동 로그인 분기(인트로 2초 대기 후 판단)
-  - 로그인 입력 검증 및 저장, 회원가입 입력 유효성(UI)
-  - 지도 화면 롱프레스 토글 패널 표출 및 버튼 동작(상태 토글)
-  - 호출 목록 더미 데이터 로딩, 당겨서 새로고침, 로딩 모달
-  - 닉네임 로드/저장, 로그아웃 후 초기 화면 복귀
+  - Intro 로그인 분기, 로그인/회원가입 API 연동, 목록 새로고침 및 로딩 상태 처리
+  - 서버 API는 JSON 배열 `{ code, message, data }` 형식 통일
+  - 배차 요청/수락 시 FCM 토큰 갱신 및 푸시 발송
+  - Google Maps API 키는 Secrets Plugin + `local.properties`로 관리
 - 비기능 요구사항
-  - 한국어 UI, 기본 반응형 고려(`react-native-responsive-screen` 사용 구간)
-  - 오프라인 상태에서도 기본 플로우 동작(로컬 저장 기반)
+  - 모든 API 오류는 Alert로 사용자에게 안내
+  - 개발 환경별 `baseURL`/API Key는 환경 파일로 분리 관리
+  - 서비스 계정 키 등 민감 정보는 Git에 포함하지 않음
 
-## 10. 리스크와 가정 (Risks & Assumptions)
+## 10. 리스크 & 가정 (Risks & Assumptions)
+
 - 리스크
-  - 지도/위치/권한 미연동 상태에서 UX 괴리
-  - 서버 연동 전환 시 API 설계와 상태관리 리팩토링 필요
+  - 로컬 네트워크(IP 변경)에 따른 Axios `baseURL` 오류 가능
+  - FCM 토큰 관리 누락 시 푸시 실패 가능성
+  - 지도 SDK 권한 처리 미구현으로 실제 기기 테스트 시 제한 발생
 - 가정
-  - v0은 데모/프로토타입 목적, 실 배차/결제는 후속 스프린트에서 구현
+  - v0는 로컬 네트워크 내 단일 서버/DB를 사용
+  - 승객/기사 계정은 동일 앱에서 관리하되 향후 앱 분리 가능
 
 ## 11. 오픈 이슈 (Open Questions)
-- 지도 SDK 선택: Google Maps vs Naver/Kakao 등 지역별 최적화
-- 인증 방식: JWT/세션/소셜 로그인 여부
-- 호출 매칭: 폴링, 소켓, FCM 기반 푸시 전략
-- 서버 스택: Node.js + MariaDB 제안 유지 여부
+
+- 실제 위치 추적/경로 안내를 어떤 SDK로 구현할지(Google vs Naver/Kakao)
+- 로그인 토큰을 JWT 등으로 교체할지, 단순 세션 유지로 갈지 결정 필요
+- 배차 로직(선착순/자동 배차) 구체화 및 상태 정의
+- Axios `baseURL` 다중 환경 구성 방식(환경 파일 vs 런타임 설정)
 
 ## 12. 부록 (Appendix)
+
 - 프로젝트 구조
-  - 진입점: `taxiApp/index.js`
-  - 앱 래퍼(샘플 템플릿): `taxiApp/App.tsx` — 실제 실행은 `TaxiApp` 사용
+  - 모바일: `taxiApp/`
+  - 서버: `server/`
 - 실행
-  - `cd taxiApp && npm start`
-  - Android: `npm run android`
-  - iOS: `bundle install` → `bundle exec pod install` → `npm run ios`
+  - 모바일: `cd taxiApp && npm start`, Android는 `npm run android`
+  - 서버: `cd server && npm install && npm start`
+- 참고 문서
+  - DB 스키마: `docs/daily-dev-logs/log01.md`
+  - 일일 로그: `docs/daily-dev-logs/`
