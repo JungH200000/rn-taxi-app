@@ -6,16 +6,46 @@ import {
   TouchableOpacity,
   TextInput,
   View,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useState } from 'react';
+import { useNavigation, ParamListBase } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import api from './API';
 
 function Register() {
   console.log('-- Register()');
 
+  const navigation = useNavigation<StackNavigationProp<ParamListBase>>();
+
   const [userId, setUserId] = useState('');
   const [userPw, setUserPw] = useState('');
   const [userPw2, setUserPw2] = useState('');
+
+  const onRegister = () => {
+    api
+      .register(userId, userPw)
+      .then(response => {
+        let { code, message } = response.data[0];
+        let title = '알림';
+        if (code == 0) {
+          navigation.pop();
+        } else {
+          title = '오류';
+        }
+        Alert.alert(title, message, [
+          {
+            text: '확인',
+            onPress: () => console.log('cancel pressed'),
+            style: 'cancel',
+          },
+        ]);
+      })
+      .catch(err => {
+        console.log(JSON.stringify(err));
+      });
+  };
 
   const isDisable = () => {
     if (userId && userPw && userPw2 && userPw == userPw2) {
@@ -53,6 +83,7 @@ function Register() {
         <TouchableOpacity
           disabled={isDisable()}
           style={isDisable() ? styles.buttonDisable : styles.button}
+          onPress={onRegister}
         >
           <Text style={styles.buttonText}>회원가입</Text>
         </TouchableOpacity>

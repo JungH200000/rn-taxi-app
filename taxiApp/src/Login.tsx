@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { useNavigation, ParamListBase } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -12,6 +13,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { TextInput } from 'react-native-gesture-handler';
 import { useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from './API';
 
 function Login() {
   console.log('-- Login()');
@@ -35,6 +37,31 @@ function Login() {
 
   const gotoRegister = () => {
     navigation.push('Register');
+  };
+
+  const onLogin = () => {
+    api
+      .login(userId, userPw)
+      .then(response => {
+        console.log('API login / data = ' + JSON.stringify(response.data[0]));
+        let { code, message } = response.data[0];
+        console.log('API login / code = ' + code + ', message = ' + message);
+
+        if (code == 0) {
+          gotoMain();
+        } else {
+          Alert.alert('오류', message, [
+            {
+              text: '확인',
+              onPress: () => console.log('Cancel Pressed'),
+              style: 'cancel',
+            },
+          ]);
+        }
+      })
+      .catch(err => {
+        console.log(JSON.stringify(err));
+      });
   };
 
   const gotoMain = () => {
@@ -65,7 +92,7 @@ function Login() {
       <View style={styles.container}>
         <TouchableOpacity
           style={disable ? styles.buttonDisable : styles.button}
-          onPress={gotoMain}
+          onPress={onLogin}
         >
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>

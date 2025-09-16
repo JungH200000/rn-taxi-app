@@ -13,10 +13,18 @@ import {
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import { useState } from 'react';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 
 function Main_Map() {
   console.log('-- Main_Map()');
 
+  // 지도를 처음 켰을 때의 위치와 축적
+  const [initialRegion, setInitialRegion] = useState({
+    latitude: 37.5666612,
+    longitude: 126.9783785,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
   const [showBtn, setShowBtn] = useState(false);
 
   const handleLongPress = async (event: any) => {
@@ -30,22 +38,11 @@ function Main_Map() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 지도 */}
-      <View
-        style={[
-          styles.container,
-          { transform: [{ scaleX: 1 }, { scaleY: 2 }] },
-        ]}
-      >
-        <Icon
-          name="building"
-          size={300}
-          color={'#3498db'}
-          onPress={() => {
-            setShowBtn(false);
-          }}
-          onLongPress={handleLongPress}
-        />
-      </View>
+      <MapView
+        style={styles.container}
+        provider={PROVIDER_GOOGLE}
+        region={initialRegion}
+      ></MapView>
 
       <View
         style={{
