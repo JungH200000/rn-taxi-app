@@ -81,6 +81,7 @@ function Main_List() {
           <Text style={[styles.textForm, { borderTopWidth: 0 }]}>
             {row.item.end_addr}
           </Text>
+          <Text style={styles.textForm}>{row.item.formatted_time}</Text>
         </View>
         <View
           style={{

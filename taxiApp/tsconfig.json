@@ -1,6 +1,6 @@
 {
   "extends": "@react-native/typescript-config",
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
   "exclude": ["**/node_modules", "**/Pods"],
   "compilerOptions": {
     "jsx": "react-native" // <-- 이 줄을 추가하세요!

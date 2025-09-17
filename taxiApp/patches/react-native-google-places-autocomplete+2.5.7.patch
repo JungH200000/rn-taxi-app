@@ -1,0 +1,38 @@
+diff --git a/node_modules/react-native-google-places-autocomplete/GooglePlacesAutocomplete.js b/node_modules/react-native-google-places-autocomplete/GooglePlacesAutocomplete.js
+index 60836de..4c7147b 100644
+--- a/node_modules/react-native-google-places-autocomplete/GooglePlacesAutocomplete.js
++++ b/node_modules/react-native-google-places-autocomplete/GooglePlacesAutocomplete.js
+@@ -92,12 +92,12 @@ export const GooglePlacesAutocomplete = forwardRef((props, ref) => {
+       const shouldDisplayPredefinedPlaces = text
+         ? results.length === 0 && text.length === 0
+         : results.length === 0;
+-      if (
+-        shouldDisplayPredefinedPlaces ||
++      if ((props.predefinedPlaces || []).length > 0 &&
++        (shouldDisplayPredefinedPlaces) ||
+         props.predefinedPlacesAlwaysVisible === true
+       ) {
+         res = [
+-          ...props.predefinedPlaces.filter(
++          ...(props.predefinedPlaces || []).filter(
+             (place) => place?.description.length,
+           ),
+         ];
+@@ -275,7 +275,7 @@ export const GooglePlacesAutocomplete = forwardRef((props, ref) => {
+       // fetch details
+       const request = new XMLHttpRequest();
+       _requests.push(request);
+-      request.timeout = props.timeout;
++      request.timeout = props.timeout || 0;
+       request.ontimeout = props.onTimeout;
+       request.onreadystatechange = () => {
+         if (request.readyState !== 4) return;
+@@ -554,7 +554,7 @@ export const GooglePlacesAutocomplete = forwardRef((props, ref) => {
+     if (supportedPlatform() && text && text.length >= props.minLength) {
+       const request = new XMLHttpRequest();
+       _requests.push(request);
+-      request.timeout = props.timeout;
++      request.timeout = props.timeout || 0;
+       request.ontimeout = props.onTimeout;
+       request.onreadystatechange = () => {
+         if (request.readyState !== 4) {
