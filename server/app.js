@@ -16,7 +16,7 @@ db.connect();
 // firebase 설정
 var admin = require('firebase-admin');
 admin.initializeApp({
-  credential: admin.credential.cert(require('./call-taxi-ServiceAccountKey.json')),
+  credential: admin.credential.cert(require('./taxi-app-ServiceAccountKey.json')),
 });
 
 // view engine setup

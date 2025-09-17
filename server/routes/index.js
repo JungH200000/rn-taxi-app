@@ -113,6 +113,26 @@ router.post('/taxi/list', function (req, res) {
     if (!err) {
       console.log('list / rows = ' + JSON.stringify(rows));
       let code = 0;
+
+      rows = rows.map((row) => {
+        const requestTime = new Date(row.requert_time);
+
+        if (isNaN(requestTime.getTime())) {
+          // 유효하지 않은 경우 처리
+          row.formatted_time = '날짜 정보 없음'; // 또는 적절한 값으로 설정
+          return row;
+        }
+
+        const today = new Date();
+        const isToday = requestTime.toDateString() === today.toDateString();
+
+        const formattedDate = requestTime.toISOString().split('T')[0]; // YYYY-MM-DD
+        const formattedTime = requestTime.toTimeString().split(' ')[0].slice(0, 5); // HH:mm
+
+        row.formatted_time = isToday ? formattedTime : formattedDate;
+
+        return row;
+      });
       res.json([{ code: code, message: '택시 호출 목록 출력 성공', data: rows }]);
     } else {
       console.log('err : ' + err);
