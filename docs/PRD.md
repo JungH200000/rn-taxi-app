@@ -1,133 +1,107 @@
-# PRD: 택시 호출 앱 (Taxi App)
+# 제품 요구 사항 문서
 
-본 문서는 현재 구현 중인 v0(MVP) 범위를 정의합니다. 스프린트마다 지속적으로 업데이트됩니다.
+## 1. 개요
 
-## 1. 개요 (Overview)
+- **목적**: 승객이 택시 호출을 생성하고 기사가 이를 확인·수락하는 최소 기능 제품을 구현한다. 양측은 Firebase Cloud Messaging(FCM) 푸시로 실시간 상태를 공유한다.
+- **구성 요소**
+  - `taxiApp/`: 승객용 React Native 앱 (v0는 Android 중심)
+  - `driverApp/`: 기사용 React Native 앱
+  - `server/`: Node.js + Express 백엔드 (MariaDB, Firebase Admin SDK 연동)
+- **v0 제외 범위**: 결제/요금 계산, 실시간 주행 추적, 고급 권한/오프라인 처리, 배포 자동화, 다국어, 정교한 리포팅 및 모니터링
 
-- 목적: 사용자가 출발지/도착지를 지정해 택시 호출을 요청하고, 기사에게는 배차 알림이 전달되는 모바일 MVP를 React Native + Node.js로 구현한다.
-- 현재 범위: 로그인/회원가입 UI, 메인 지도/목록/설정 화면, 호출 생성 및 목록 조회, 기사용 목록·배차, FCM 알림.
-- 제외 범위(v0): 실시간 주행 추적, 정교한 권한/오프라인 처리, 기사 앱 분리, 결제/요금 산정, 자동 배차 알고리즘.
+## 2. 사용자 및 가치
 
-## 2. 타깃 사용자 & 가치 (Users & Value)
+- **승객**: 빠르게 호출을 요청하고 배차 결과를 즉시 확인하고 싶다.
+- **기사**: 대기 중인 호출을 파악하고 간단히 수락한 뒤 배차 완료 알림을 전달하고 싶다.
 
-- 승객: 간단한 정보 입력과 지도 검색으로 택시 호출을 빠르게 요청할 수 있다.
-- 기사: 호출 목록을 받아보고 수락 시 사용자에게 즉시 알릴 수 있다.
+## 3. 목표와 성공 기준
 
-## 3. 목표 & 지표 (Goals & Metrics)
+- 로컬 환경에서 전체 흐름(승객 요청 → 기사 REQ 확인 → 기사 수락 → 푸시 알림 → 승객 목록 RES 반영)이 정상 동작.
+- 양측 로그인/회원가입이 FCM 토큰을 저장하고 오류 메시지를 적절히 표시.
+- 모든 API 응답이 `{ code, message, data }` 포맷을 따르고 사람이 읽을 수 있는 `formatted_time`을 제공.
 
-- 목표
-  - v0 UI 플로우 완성: Intro → 로그인/회원가입 → 메인(지도, 목록, 설정 탭)
-  - 호출 생성 플로우 완료: 지도 검색 → 서버 `/taxi/call` → 목록/푸시로 확인
-  - Firebase Cloud Messaging 연동 유지: 호출/배차 알림 정상 수신
-- 지표(정성)
-  - 로그인/호출/목록/배차 테스트가 로컬 환경에서 성공적으로 수행될 것
-  - 오류(Alert, 로그)로 실패 원인을 확인할 수 있을 것
+## 4. 기능 범위 (v0)
 
-## 4. 핵심 기능 (Scope v0)
+### 4.1 승객 앱 (`taxiApp`)
 
-1. 사용자 인증
+- `AsyncStorage`에 `userId`, `fcmToken`, `nickName` 저장.
+- 로그인/회원가입은 `/taxi/login`, `/taxi/register` 호출 시 FCM 토큰을 함께 전송.
+- 메인 지도 화면
+  - `react-native-google-places-autocomplete`로 출발/도착지 검색 자동완성 제공.
+  - 지도 롱프레스로 Google Geocoding API 역지오코딩.
+  - `@react-native-community/geolocation`으로 현재 위치를 출발지로 설정.
+  - 선택한 두 지점에 마커와 Polyline 표시.
+  - `/taxi/call`로 좌표·주소를 전송하여 호출 생성.
+- 메인 목록 화면
+  - `/taxi/list` 결과를 표시하고 `formatted_time`을 노출.
+  - `call_state`가 `RES`이면 파란색으로 강조.
+  - `messaging().onMessage` 수신 시 자동 새로고침.
 
-   - Intro에서 `AsyncStorage.userId` 존재 여부로 메인/로그인 분기
-   - 로그인: ID/PW 입력 → `/taxi/login` 검증 → 성공 시 `AsyncStorage` 저장
-   - 회원가입: ID/PW 중복 검증 → `/taxi/register` 호출 → 응답 Alert 처리
+### 4.2 기사 앱 (`driverApp`)
 
-2. 호출 생성 & 지도 UX
+- 승객 앱과 동일한 방식으로 인증/토큰 저장.
+- 메인 목록 화면
+  - `/driver/list`를 호출해 모든 호출을 가져오고, 필터(전체/`REQ`/`RES`) 제공.
+  - `REQ` 상태의 항목에만 “Accept” 버튼 노출, `/driver/accept` 호출.
+  - 수동 새로고침 및 FCM 수신 시 자동 새로고침.
 
-   - 지도 화면: Google Maps 기반, `react-native-google-places-autocomplete`로 주소 검색/자동완성
-   - 롱프레스 시 역지오코딩으로 주소 확인 후 출발/도착지에 배치, 두 지점 간 Polyline 표시
-   - 현재 위치 버튼: `@react-native-community/geolocation`으로 좌표 취득 후 출발지 자동 입력
-   - 호출 버튼: `/taxi/call` API에 좌표·주소 전달 → 성공 시 목록 탭 이동 및 Alert
+### 4.3 서버 (`server/routes/index.js`)
 
-3. 호출 목록 & 기사 플로우
+- `/taxi/register|login` → `tb_user` FCM 토큰 관리.
+- `/taxi/list` → 최신 순 조회, `formatted_time` 값 생성 (`requert_time` 컬럼 사용).
+- `/taxi/call` → 호출 저장 후 `sendPushToAlldriver()`로 기사 전체에 알림 발송.
+- `/driver/register|login|list|accept` → `tb_driver` 및 기사 흐름 처리. 수락 시 `sendPushToUser(userId)` 호출.
+- 공통 유틸: `updateFCM`, `sendPushToAlldriver`, `sendPushToUser`, `sendFcm`.
 
-   - 승객 `/taxi/list`: 호출 이력 + `formatted_time`을 반환, 클라이언트는 목록에서 시각 표시
-   - 기사 `/driver/list`: 대기/본인 배차 호출 목록 조회, `/driver/accept`로 배차 처리 후 사용자 푸시 전송
+## 5. 사용자 흐름
 
-4. 푸시 알림
-   - Firebase Admin SDK로 호출 발생 시 기사 전체, 배차 수락 시 해당 승객에게 푸시 발송
-   - FCM 토큰은 로그인/회원가입 시 업데이트
+1. **승객**
+   1. 앱 실행 → Intro에서 `AsyncStorage.userId` 확인.
+   2. 로그인/회원가입 → FCM 토큰 저장 후 메인 탭 진입.
+   3. 지도에서 주소 검색/롱프레스/현재 위치로 출발·도착지 설정.
+   4. 호출 생성 → 성공 Alert → 목록 화면 이동.
+   5. 기사 수락 시 FCM을 받아 목록이 즉시 갱신.
+2. **기사**
+   1. 앱 실행 → Intro → 로그인/회원가입.
+   2. 호출 목록 확인, 필요 시 `REQ` 필터 적용.
+   3. 호출 수락 → 상태가 `RES`로 변경, 승객에게 푸시 전달.
 
-## 5. 사용자 플로우 (User Flows)
+## 6. 데이터 모델
 
-1. 앱 시작 → Intro: 저장된 `userId` 존재 시 Main, 없으면 Login
-2. 지도 탭에서 주소 검색 또는 롱프레스 선택 → 출발/도착지 설정 → 호출 요청 → 성공 Alert 후 목록 탭 이동
-3. 목록 탭 진입 시 자동으로 `/taxi/list` 호출, 풀투리프레시로 갱신
-4. 기사(추후 별도 앱 분리 가능)는 `/driver/login` → 목록 확인 → 호출 수락 시 승객에게 푸시 전송
+- **AsyncStorage (앱별)**
+  - `userId` (문자열)
+  - `fcmToken` (문자열)
+  - `nickName` (문자열, 향후 서버 동기화 예정)
+- **MariaDB `taxi` 스키마**
+  - `tb_user(user_id, user_pw, fcm_token)`
+  - `tb_driver(driver_id, driver_pw, fcm_token)`
+  - `tb_call(id, user_id, start_lat, start_lng, start_addr, end_lat, end_lng, end_addr, call_state, driver_id, requert_time)`
+    - `requert_time`은 추후 `request_time`으로 정정 필요.
+  - API는 각 행에 `formatted_time`을 추가해 UI에 전달.
+- **환경/보안 파일**
+  - `taxiApp/.env`, `driverApp/.env`: Google Maps API 키 (`react-native-dotenv`로 로드).
+  - 각 앱의 `google-services.json`: Firebase 설정 (Git 미포함).
+  - `server/`의 Firebase Admin 서비스 계정 JSON (Git 미포함).
 
-## 6. 네비게이션 구조 (Navigation)
+## 7. 기술 스택
 
-- Stack: Intro → Login → Register → Main (Intro에서 조건부로 Main 바로 이동)
-- BottomTab(Main): Map(Main_Map), List(Main_List), Setting(Main_Setting)
-- 주요 화면 파일
-  - `taxiApp/src/TaxiApp.tsx`: Stack 네비게이션 정의
-  - `taxiApp/src/Main.tsx`: BottomTab 정의
-  - `taxiApp/src/Main_Map.tsx`: 지도/자동완성/현재 위치/호출 로직
-  - `taxiApp/src/Main_List.tsx`: 호출 목록, `formatted_time` 표시, 새로고침/로딩 UI
-  - `taxiApp/src/Login.tsx`, `Register.tsx`: 인증 화면 + 서버 연동
+- 모바일: React Native 0.81, React Navigation, `react-native-maps`, `react-native-google-places-autocomplete`, `@react-native-community/geolocation`.
+- FCM: `@react-native-firebase/app`, `@react-native-firebase/messaging`, `react-native-get-random-values`, `patch-package`.
+- 백엔드: Node.js, Express, `mysql`, `dotenv`, Firebase Admin SDK, MariaDB.
 
-## 7. 데이터 모델
+## 8. 비기능 요구 사항
 
-- 로컬(AsyncStorage)
-  - `userId: string` ? 로그인 세션 유지
-  - `nickName: string` ? 설정 화면에서 사용(추후 서버 연동 예정)
-- 서버(DB: MariaDB, `taxi` 스키마)
-  - `tb_user(user_id, user_pw, fcm_token)` ? 승객 계정/토큰
-  - `tb_driver(driver_id, driver_pw, fcm_token)` ? 기사 계정/토큰
-  - `tb_call(id, user_id, start_lat, start_lng, start_addr, end_lat, end_lng, end_addr, call_state, driver_id, requert_time)` ? 호출 정보, 기사 배정 상태, 요청 시각
-    - 서버는 응답 시 `formatted_time`(가공된 표시용 문자열)을 추가해 반환
-- 환경 변수
-  - `taxiApp/.env`: `MAPS_API_KEY`
-  - `taxiApp/.env-example.md`: 공유용 템플릿
-  - Firebase 서비스 계정 JSON은 서버 폴더에 별도 보관(버전 관리 제외)
+- 모든 API는 동일한 JSON 구조를 유지.
+- `patch-package`가 `postinstall`에서 자동 실행되도록 관리.
+- 민감 정보는 Git에 커밋하지 않고 템플릿(.env-example 등)만 제공.
+- 오류가 발생하면 Alert 및 콘솔 로그로 원인 파악이 가능해야 함.
 
-## 8. 기술 스택 (Tech Stack)
+## 9. 부록
 
-- 모바일
-  - React Native, React Navigation, AsyncStorage
-  - 지도/검색: `react-native-maps`, `react-native-google-places-autocomplete`, Google Geocoding API
-  - 위치: `@react-native-community/geolocation`
-  - 기타: `react-native-get-random-values`(Places 의존성), `react-native-vector-icons`, `react-native-responsive-screen`
-- 네트워크: Axios(`taxiApp/src/API.tsx`)
-- 서버: Node.js, Express, `mysql`, `dotenv`, Firebase Admin SDK, `patch-package`
-- 빌드/환경: `react-native-dotenv`로 `.env` 로딩, Android Google Maps Secrets Gradle Plugin(2.0.1)
-
-## 9. 요구사항 세부 (Requirements)
-
-- 기능 요구사항
-  - 주소 검색/롱프레스/현재 위치 중 하나로 출발·도착 지점 설정 가능
-  - `/taxi/call` 호출 시 좌표/주소/요청 시각이 모두 저장되고 기사에게 푸시 발송
-  - 목록 화면은 `formatted_time`을 함께 노출
-  - 기사 수락 시 승객 푸시 알림 발송
-- 비기능 요구사항
-  - `.env` 키나 Firebase 키는 Git에 포함하지 않음
-  - Places 라이브러리 패치(`patch-package`)가 `npm install` 이후 자동 적용되도록 유지
-  - 네트워크 오류 발생 시 Alert 또는 로그로 식별 가능해야 함
-
-## 10. 리스크 & 가정 (Risks & Assumptions)
-
-- 리스크
-  - DB 스키마(`tb_call.requert_time`)와 서버 쿼리 컬럼명이 불일치할 경우 발생할 수 있는 오류
-  - Axios `baseURL`이 개발자 PC IPv4에 고정되어 있어 환경별 설정 누락 시 통신 실패 가능
-  - 위치 권한 미부여 시 현재 위치 버튼이 실패할 수 있음
-- 가정
-  - v0는 로컬 네트워크 내 단일 서버/DB를 사용
-  - 승객/기사 계정은 동일 앱에서 관리하되 향후 앱 분리 가능
-
-## 11. 오픈 이슈 (Open Questions)
-
-- Axios `baseURL`을 환경별로 분리할 방법(.env, 런타임 설정 등)을 어떻게 정리할지
-- 지도 SDK(네이버/카카오) 대체 가능성 및 비교 평가 필요 여부
-- 로그인 세션을 JWT로 확장할지 단기적으로 AsyncStorage 유지할지 결정
-- Places 라이브러리 패치 유지 전략(버전 업 시 재생성 방법) 문서화 필요
-
-## 12. 부록 (Appendix)
-
-- 프로젝트 구조
-  - 모바일: `taxiApp/`
-  - 서버: `server/`
-- 실행
-  - 모바일: `cd taxiApp && npm install && npm start`, Android는 `npm run android`
+- **Repo 구조**: `taxiApp/`, `driverApp/`, `server/`, `docs/`, `images/`
+- **주요 명령어**
+  - 승객 앱: `cd taxiApp && npm install, `npm run android`
+  - 기사 앱: `cd driverApp && npm install, `npm run android`
   - 서버: `cd server && npm install && npm start`
-- 참고 문서
-  - DB 스키마: `docs/daily-dev-logs/log01.md`
+- **참고 문서**
   - 일일 로그: `docs/daily-dev-logs/`
