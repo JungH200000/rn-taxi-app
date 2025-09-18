@@ -12,13 +12,14 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import React from 'react';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { RefreshControl } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './API';
+import messaging from '@react-native-firebase/messaging';
 
 function Main_List() {
   console.log('-- Main_List()');
@@ -90,11 +91,23 @@ function Main_List() {
             justifyContent: 'center',
           }}
         >
-          <Text>{row.item.call_state}</Text>
+          {row.item.call_state == 'RES' ? (
+            <Text style={{ color: 'blue' }}>{row.item.call_state}</Text>
+          ) : (
+            <Text style={{ color: 'gray' }}>{row.item.call_state}</Text>
+          )}
         </View>
       </View>
     );
   };
+
+  useEffect(() => {
+    const message = messaging().onMessage(remoteMessage => {
+      console.log('[Remote Message]', JSON.stringify(remoteMessage));
+      requestCallList();
+    });
+    return message;
+  });
 
   return (
     <SafeAreaView style={styles.container}>

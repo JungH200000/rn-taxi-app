@@ -39,9 +39,10 @@ function Login() {
     navigation.push('Register');
   };
 
-  const onLogin = () => {
+  const onLogin = async () => {
+    let fcmToken = (await AsyncStorage.getItem('fcmToken')) || '';
     api
-      .login(userId, userPw)
+      .login(userId, userPw, `${fcmToken}`)
       .then(response => {
         console.log('API login / data = ' + JSON.stringify(response.data[0]));
         let { code, message } = response.data[0];

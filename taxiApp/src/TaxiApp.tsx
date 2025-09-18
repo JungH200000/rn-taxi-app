@@ -1,18 +1,50 @@
 // taxiApp/src/TaxiApp.tsx
-import { SafeAreaView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useEffect } from 'react';
+import messaging from '@react-native-firebase/messaging';
 
 import Intro from './Intro';
 import Login from './Login';
 import Register from './Register';
 import Main from './Main';
 import NickNameScreen from './Main_Setting_NickName';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+messaging().setBackgroundMessageHandler(async remoteMessage => {
+  console.log('[Background Remote Message]', remoteMessage);
+});
 
 function TaxiApp() {
   console.log('-- TaxiApp()');
 
   const Stack = createStackNavigator();
+
+  const getFcmToken = async () => {
+    const fcmToken = await messaging().getToken();
+    await AsyncStorage.setItem('fcmToken', fcmToken);
+    console.log('>> fcmToken = ' + fcmToken);
+  };
+
+  useEffect(() => {
+    getFcmToken();
+    messaging().onMessage(remoteMessage => {
+      console.log('[Remote Message]', JSON.stringify(remoteMessage));
+      let title = '';
+      let body = '';
+
+      if (remoteMessage.notification && remoteMessage.notification.title) {
+        title = remoteMessage.notification.title;
+      }
+      if (remoteMessage.notification && remoteMessage.notification.body) {
+        body = remoteMessage.notification.body;
+      }
+      if (remoteMessage) {
+        Alert.alert(title, body, [{ text: '확인', style: 'cancel' }]);
+      }
+    });
+  });
 
   return (
     <NavigationContainer>

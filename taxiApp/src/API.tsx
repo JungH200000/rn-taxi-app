@@ -9,11 +9,19 @@ export default {
   test() {
     return instance.get('/taxi/test');
   },
-  login(id: string, pw: string) {
-    return instance.post('/taxi/login', { userId: id, userPw: pw });
+  login(id: string, pw: string, fcmToken: string) {
+    return instance.post('/taxi/login', {
+      userId: id,
+      userPw: pw,
+      fcmToken: fcmToken,
+    });
   },
-  register(id: string, pw: string) {
-    return instance.post('/taxi/register', { userId: id, userPw: pw });
+  register(id: string, pw: string, fcmToken: string) {
+    return instance.post('/taxi/register', {
+      userId: id,
+      userPw: pw,
+      fcmToken: fcmToken,
+    });
   },
   list(id: string) {
     return instance.post('/taxi/list', { userId: id });
