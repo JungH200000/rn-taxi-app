@@ -312,7 +312,7 @@ router.post('/push/test', function (req, res) {
 
 // 사용자가 call => fcm_token을 가진 모든 드라이버에게 푸시하는 함수
 const sendPushToAlldriver = () => {
-  let queryStr = 'SELECT fcm_Token FROM tb_driver';
+  let queryStr = 'SELECT fcm_token FROM tb_driver';
   console.log('>> queryStr = ' + queryStr);
 
   db.query(queryStr, function (err, rows, fields) {
